@@ -69,9 +69,19 @@ export default function AdminDashboard() {
       <Navbar />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex flex-col gap-2 mb-8">
-          <h1 className="text-3xl font-display font-bold text-foreground">Management Console</h1>
-          <p className="text-muted-foreground">Review and process student NOC applications</p>
+          <div className="flex flex-col gap-2 mb-8">
+          <div className="flex justify-between items-end">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-foreground">Management Console</h1>
+              <p className="text-muted-foreground">Review and process student NOC applications</p>
+            </div>
+            <Link href="/admin/settings">
+              <Button variant="outline" className="rounded-xl border-border/50 shadow-sm bg-card hover:bg-muted/50">
+                <Settings className="h-4 w-4 mr-2" />
+                Admin Settings
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Card className="bg-card shadow-sm border-border/50 rounded-2xl mb-8 overflow-hidden">

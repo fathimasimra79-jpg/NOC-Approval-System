@@ -46,6 +46,15 @@ export const nocRequestResponseSchema = z.object({
   student: userResponseSchema.optional()
 });
 
+export const adminSettingsResponseSchema = z.object({
+  id: z.number(),
+  collegeName: z.string(),
+  logoPath: z.string().nullable(),
+  signaturePath: z.string().nullable(),
+  authorizedName: z.string(),
+  designation: z.string(),
+});
+
 export const api = {
   auth: {
     register: {
@@ -127,6 +136,24 @@ export const api = {
         200: nocRequestResponseSchema,
         401: errorSchemas.unauthorized,
         404: errorSchemas.notFound,
+      },
+    },
+    settings: {
+      get: {
+        method: 'GET' as const,
+        path: '/api/admin/settings' as const,
+        responses: {
+          200: adminSettingsResponseSchema,
+          401: errorSchemas.unauthorized,
+        },
+      },
+      update: {
+        method: 'POST' as const,
+        path: '/api/admin/settings' as const,
+        responses: {
+          200: adminSettingsResponseSchema,
+          401: errorSchemas.unauthorized,
+        },
       },
     },
   },

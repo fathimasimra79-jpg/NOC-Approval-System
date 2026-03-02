@@ -9,8 +9,21 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import express from "express";
+import multer from "multer";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "fallback_secret_for_development";
+
+const storageMulter = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storageMulter });
 
 // Middleware to verify JWT
 function authenticateToken(req: Request, res: Response, next: NextFunction) {
@@ -36,6 +49,8 @@ function authenticateAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 async function generateNOCPdf(noc: any, student: any): Promise<string> {
+  const settings = await storage.getAdminSettings();
+  
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 50 });
@@ -51,28 +66,67 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       
       doc.pipe(writeStream);
       
-      // Basic PDF Layout for NOC
-      doc.fontSize(20).text("UNIVERSITY NAME", { align: "center", underline: true });
-      doc.moveDown();
+      // Top Left -> College Logo
+      if (settings?.logoPath) {
+        try {
+          const logoFull = path.join(process.cwd(), "public", settings.logoPath);
+          if (fs.existsSync(logoFull)) {
+            doc.image(logoFull, 50, 45, { width: 60 });
+          }
+        } catch (e) {
+          console.error("Failed to add logo to PDF", e);
+        }
+      }
+
+      // Center Top -> College Name
+      const collegeName = settings?.collegeName || "UNIVERSITY NAME";
+      doc.fontSize(18).font('Helvetica-Bold').text(collegeName.toUpperCase(), { align: "center" });
+      doc.moveDown(0.5);
       
-      doc.fontSize(16).text("NO OBJECTION CERTIFICATE", { align: "center" });
+      // Title "No Objection Certificate" centered below it
+      doc.fontSize(16).font('Helvetica').text("NO OBJECTION CERTIFICATE", { align: "center" });
+      doc.moveDown(0.5);
+      
+      // Horizontal line below title
+      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
       doc.moveDown(2);
       
-      const issueDate = new Date().toLocaleDateString();
-      doc.fontSize(12).text(`Date: ${issueDate}`, { align: "right" });
-      doc.moveDown(2);
-      
-      doc.fontSize(12).text(`This is to certify that ${student.name}, Roll Number ${student.rollNumber}, is a bonafide student of the ${student.department} department, year ${student.year}, at our university.`);
+      // Student Details
+      doc.fontSize(12).font('Helvetica-Bold').text("STUDENT DETAILS:");
+      doc.font('Helvetica').text(`Name: ${student.name}`);
+      doc.text(`Roll Number: ${student.rollNumber}`);
+      doc.text(`Department: ${student.department}`);
+      doc.text(`Year: ${student.year}`);
       doc.moveDown();
       
-      doc.text(`We have no objection to them undertaking an internship at ${noc.companyName} for a duration of ${noc.duration}.`);
+      // Paragraph
+      doc.fontSize(12).text(`This is to certify that the above-mentioned student is a bonafide student of our university. We have no objection to them undertaking an internship at ${noc.companyName} for a duration of ${noc.duration}.`, { align: 'justify' });
       doc.moveDown();
       
       doc.text(`Reason for NOC: ${noc.reason}`);
       doc.moveDown(4);
       
-      doc.text("Authorized Signature", { align: "right" });
-      doc.text("Head of Department", { align: "right" });
+      // Bottom Left -> Date of Issue
+      const issueDate = new Date().toLocaleDateString();
+      doc.font('Helvetica-Bold').text(`Date of Issue: ${issueDate}`, 50, doc.y, { align: "left" });
+      
+      // Bottom Right -> Signature Image
+      if (settings?.signaturePath) {
+        try {
+          const sigFull = path.join(process.cwd(), "public", settings.signaturePath);
+          if (fs.existsSync(sigFull)) {
+            // Place it towards the bottom right
+            doc.image(sigFull, 400, doc.y - 40, { width: 100 });
+          }
+        } catch (e) {
+          console.error("Failed to add signature to PDF", e);
+        }
+      }
+
+      doc.moveDown(2);
+      doc.fontSize(12).font('Helvetica').text(settings?.authorizedName || "Authorized Signatory", 400, doc.y, { align: "center" });
+      doc.text(settings?.designation || "Head of Department", 400, doc.y, { align: "center" });
+      doc.text("Authorized Signatory", 400, doc.y, { align: "center" });
       
       doc.end();
       
@@ -118,6 +172,7 @@ export async function registerRoutes(
 
   // Serve static PDF files
   app.use('/pdfs', express.static(path.join(process.cwd(), 'public', 'pdfs')));
+  app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
   // --- Auth Routes ---
   app.post(api.auth.register.path, async (req, res) => {
@@ -272,6 +327,46 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get(api.admin.settings.get.path, authenticateToken, authenticateAdmin, async (req, res) => {
+    const settings = await storage.getAdminSettings();
+    if (!settings) {
+      return res.status(200).json({
+        collegeName: "",
+        authorizedName: "",
+        designation: "",
+        logoPath: null,
+        signaturePath: null
+      });
+    }
+    res.json(settings);
+  });
+
+  app.post(api.admin.settings.update.path, authenticateToken, authenticateAdmin, upload.fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'signature', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const { collegeName, authorizedName, designation } = req.body;
+      
+      const existing = await storage.getAdminSettings();
+      
+      const settings = {
+        collegeName,
+        authorizedName,
+        designation,
+        logoPath: files['logo'] ? `/uploads/${files['logo'][0].filename}` : existing?.logoPath || null,
+        signaturePath: files['signature'] ? `/uploads/${files['signature'][0].filename}` : existing?.signaturePath || null,
+      };
+      
+      const updated = await storage.upsertAdminSettings(settings);
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

@@ -37,6 +37,19 @@ export const nocRequestsRelations = relations(nocRequests, ({ one }) => ({
   }),
 }));
 
+export const adminSettings = pgTable("admin_settings", {
+  id: serial("id").primaryKey(),
+  collegeName: text("college_name").notNull(),
+  logoPath: text("logo_path"),
+  signaturePath: text("signature_path"),
+  authorizedName: text("authorized_name").notNull(),
+  designation: text("designation").notNull(),
+});
+
+export const insertAdminSettingsSchema = createInsertSchema(adminSettings).omit({ id: true });
+export type AdminSettings = typeof adminSettings.$inferSelect;
+export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertNocRequestSchema = createInsertSchema(nocRequests).omit({ 
   id: true, 

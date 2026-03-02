@@ -24,7 +24,15 @@ export function Navbar() {
               <>
                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground mr-4">
                   {user.role === 'admin' ? (
-                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <>
+                      <Link href="/admin/settings">
+                        <Button variant="ghost" size="sm" className="rounded-xl mr-2 h-9 px-4">
+                          <GraduationCap className="h-4 w-4 mr-2" />
+                          Settings
+                        </Button>
+                      </Link>
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                    </>
                   ) : null}
                   <span className="font-medium text-foreground">{user.name}</span>
                   {user.rollNumber && <span>({user.rollNumber})</span>}

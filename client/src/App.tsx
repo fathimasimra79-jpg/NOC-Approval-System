@@ -10,6 +10,7 @@ import StudentAuth from "./pages/student-auth";
 import AdminAuth from "./pages/admin-auth";
 import StudentDashboard from "./pages/student-dashboard";
 import AdminDashboard from "./pages/admin-dashboard";
+import AdminSettings from "./pages/admin-settings";
 import NotFound from "./pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       
       <Route path="/student/dashboard" component={StudentDashboard} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/settings" component={AdminSettings} />
       
       <Route component={NotFound} />
     </Switch>

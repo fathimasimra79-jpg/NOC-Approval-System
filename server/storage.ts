@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, nocRequests, type User, type InsertUser, type NocRequest, type InsertNocRequest, type NocRequestWithStudent } from "@shared/schema";
+import { users, nocRequests, adminSettings, type User, type InsertUser, type NocRequest, type InsertNocRequest, type NocRequestWithStudent, type AdminSettings, type InsertAdminSettings } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -14,6 +14,10 @@ export interface IStorage {
   getAllNocRequests(): Promise<NocRequestWithStudent[]>;
   getNocRequest(id: number): Promise<NocRequest | undefined>;
   updateNocRequestStatus(id: number, status: string, rejectionReason?: string, pdfPath?: string): Promise<NocRequest>;
+
+  // Admin Settings operations
+  getAdminSettings(): Promise<AdminSettings | undefined>;
+  upsertAdminSettings(settings: InsertAdminSettings): Promise<AdminSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -81,6 +85,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(nocRequests.id, id))
       .returning();
     return updated;
+  }
+
+  async getAdminSettings(): Promise<AdminSettings | undefined> {
+    const [settings] = await db.select().from(adminSettings).limit(1);
+    return settings;
+  }
+
+  async upsertAdminSettings(insertSettings: InsertAdminSettings): Promise<AdminSettings> {
+    const [existing] = await db.select().from(adminSettings).limit(1);
+    if (existing) {
+      const [updated] = await db.update(adminSettings)
+        .set(insertSettings)
+        .where(eq(adminSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(adminSettings).values(insertSettings).returning();
+      return created;
+    }
   }
 }
 

@@ -1,0 +1,105 @@
+Upgrade my existing NOC Approval System with the following features:
+
+1️⃣ ADMIN SETTINGS SECTION
+Create a new Admin Settings page where admin can:
+
+- Upload College Logo (image file)
+- Upload Digital Signature (image file)
+- Enter College Name
+- Enter Authorized Signatory Name
+- Enter Designation (e.g., Head of Department)
+
+Store uploaded images inside a local uploads folder.
+Store file paths and admin details in database (MongoDB).
+
+2️⃣ DATABASE UPDATE
+
+Create a new collection called:
+AdminSettings
+
+Schema:
+{
+  collegeName: String,
+  logoPath: String,
+  signaturePath: String,
+  authorizedName: String,
+  designation: String
+}
+
+Only one settings document should exist (update if already exists).
+
+3️⃣ BACKEND ROUTES
+
+Create routes:
+
+POST /api/admin/settings
+- Accept multipart/form-data
+- Upload logo and signature using multer
+- Save paths in database
+
+GET /api/admin/settings
+- Fetch saved admin settings
+
+4️⃣ PDF GENERATION UPDATE
+
+Modify existing NOC PDF generation logic so that:
+
+- College logo appears at top left
+- College name appears centered at top in bold
+- Title "No Objection Certificate" centered below it
+- Horizontal line below title
+- Student details formatted exactly like sample
+- Body paragraph justified
+- Date of issue bold at bottom left
+- Signature image at bottom right
+- Below signature image:
+   Authorized Name
+   Designation
+   "Authorized Signatory"
+
+Load logo and signature dynamically from saved admin settings.
+
+If image not found, skip gracefully.
+
+5️⃣ FRONTEND UPDATE
+
+Create Admin Settings page:
+Route: /admin/settings
+
+Add:
+- Logo upload input
+- Signature upload input
+- College name input
+- Authorized name input
+- Designation input
+- Save button
+
+On save:
+Send form data to backend using FormData.
+
+6️⃣ SECURITY
+
+Protect settings route with admin authentication middleware.
+
+7️⃣ IMPORTANT
+
+Do NOT break existing:
+- Student NOC request flow
+- Admin approval flow
+- PDF generation trigger
+
+Only enhance PDF layout and add dynamic logo & signature.
+
+Ensure final PDF layout matches this structure:
+
+Top Left → College Logo
+Center Top → College Name
+Below → NO OBJECTION CERTIFICATE
+Line separator
+Student Details
+Paragraph
+Bottom Left → Date of Issue
+Bottom Right → Signature Image
+Below → Authorized Name
+Below → Designation
+Below → Authorized Signatory
