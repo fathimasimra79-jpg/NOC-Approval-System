@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuthContext } from "@/context/AuthContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { useAllNocRequests, useApproveNoc, useRejectNoc } from "@/hooks/use-noc";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Search, Check, X, Building, Calendar, User as UserIcon } from "lucide-react";
+import { Loader2, Search, Check, X, Building, Calendar, User as UserIcon, Settings } from "lucide-react";
 
 export default function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuthContext();
