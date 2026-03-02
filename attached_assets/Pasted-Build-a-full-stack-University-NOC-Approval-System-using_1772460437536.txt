@@ -1,0 +1,185 @@
+Build a full-stack University NOC Approval System using:
+
+Frontend: React (Vite)
+Backend: Node.js + Express
+Database: MongoDB (Mongoose)
+PDF Generation: pdfkit
+Authentication: JWT
+Password Hashing: bcrypt
+Styling: Tailwind CSS
+
+The system must include TWO roles:
+1) Student
+2) Admin
+
+=========================================
+FEATURES REQUIRED
+=========================================
+
+STUDENT SIDE:
+- Student Registration
+  Fields:
+    - Full Name
+    - Roll Number
+    - Department
+    - Year
+    - Email
+    - Password
+    - Internship Company Name
+    - Internship Duration
+    - Reason for NOC
+
+- Student Login (JWT authentication)
+
+- After login:
+  - Submit NOC Request
+  - View Request Status:
+      - Pending
+      - Approved
+      - Rejected
+
+- If Approved:
+  - Download generated NOC PDF
+
+=========================================
+
+ADMIN SIDE:
+=========================================
+
+- Admin Login (separate login route)
+- Hardcoded default admin:
+    Email: admin@college.com
+    Password: admin123
+
+- Admin Dashboard:
+    - View all NOC Requests in table
+    - Filter by:
+        - Pending
+        - Approved
+        - Rejected
+    - Search by Roll Number
+
+- Each request should have:
+    - Approve Button
+    - Reject Button
+    - View Details
+
+=========================================
+
+WHEN ADMIN CLICKS APPROVE:
+=========================================
+
+- Update status to "Approved"
+- Automatically generate NOC PDF with:
+
+  Include:
+    - College Logo (top center)
+    - College Name
+    - Certificate Title: NO OBJECTION CERTIFICATE
+    - Student Name
+    - Roll Number
+    - Department
+    - Company Name
+    - Duration
+    - Issue Date
+    - Official Signature image (bottom right)
+
+- Save PDF file path in database
+- Student can download it
+
+=========================================
+
+WHEN ADMIN CLICKS REJECT:
+=========================================
+
+- Update status to "Rejected"
+- Allow admin to add rejection reason
+- Student can view rejection reason
+
+=========================================
+DATABASE MODELS
+=========================================
+
+Create Mongoose models:
+
+1) User:
+   - name
+   - rollNumber
+   - department
+   - year
+   - email
+   - password (hashed)
+   - role (student/admin)
+
+2) NOCRequest:
+   - studentId
+   - companyName
+   - duration
+   - reason
+   - status (Pending/Approved/Rejected)
+   - rejectionReason
+   - pdfPath
+   - createdAt
+
+=========================================
+ROUTES REQUIRED
+=========================================
+
+AUTH ROUTES:
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/admin-login
+
+STUDENT ROUTES:
+POST /api/noc/apply
+GET /api/noc/my-requests
+
+ADMIN ROUTES:
+GET /api/admin/requests
+PUT /api/admin/approve/:id
+PUT /api/admin/reject/:id
+
+=========================================
+SECURITY
+=========================================
+
+- Use JWT middleware
+- Protect admin routes
+- Protect student routes
+- Hash passwords with bcrypt
+
+=========================================
+FRONTEND PAGES
+=========================================
+
+Pages:
+- Home Page
+- Student Register
+- Student Login
+- Admin Login
+- Student Dashboard
+- Admin Dashboard
+
+Use React Router.
+
+=========================================
+UI DESIGN
+=========================================
+
+Make it modern and clean:
+- Tailwind CSS
+- Card layout
+- Status badges (green, red, yellow)
+- Responsive design
+
+=========================================
+EXTRA
+=========================================
+
+- Show success/error alerts
+- Use axios for API calls
+- Proper folder structure
+- Clean commented code
+- Provide setup instructions at end
+
+Generate FULL WORKING CODE for both frontend and backend.
