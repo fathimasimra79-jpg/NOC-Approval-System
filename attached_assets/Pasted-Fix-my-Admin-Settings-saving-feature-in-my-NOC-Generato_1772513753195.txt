@@ -1,0 +1,84 @@
+Fix my Admin Settings saving feature in my NOC Generator project.
+
+Currently, saving admin settings (college name, logo, signature, designation) is throwing an error.
+
+Please do the following fixes carefully without breaking existing student request and admin approval flow:
+
+1️⃣ Ensure "uploads" folder is created automatically if not present.
+
+Add:
+
+const fs = require("fs");
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
+2️⃣ Configure multer correctly for file uploads:
+
+const multer = require("multer");
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+3️⃣ Fix the route:
+
+POST /api/admin/settings
+
+Use:
+
+upload.fields([
+  { name: "collegeLogo", maxCount: 1 },
+  { name: "signatureImage", maxCount: 1 }
+])
+
+Inside the route:
+
+- Safely access files using optional chaining:
+  const logoPath = req.files?.collegeLogo?.[0]?.path || "";
+  const signaturePath = req.files?.signatureImage?.[0]?.path || "";
+
+- Extract text fields from req.body
+- Use findOneAndUpdate with upsert: true to save only one settings document.
+
+4️⃣ Fix frontend submission:
+
+Use FormData properly:
+
+const formData = new FormData();
+formData.append("collegeLogo", logoFile);
+formData.append("signatureImage", signatureFile);
+formData.append("collegeName", collegeName);
+formData.append("authorizedName", authorizedName);
+formData.append("designation", designation);
+
+fetch("/api/admin/settings", {
+  method: "POST",
+  body: formData
+});
+
+Important:
+DO NOT set "Content-Type": "application/json"
+Browser must automatically set multipart/form-data.
+
+5️⃣ Add proper error handling:
+- Console log req.files and req.body
+- Return proper 500 response with error message
+
+6️⃣ Ensure this does NOT break:
+- Student NOC request system
+- Admin approval system
+- PDF generation logic
+
+After fixing, saving settings should:
+- Upload images successfully
+- Store paths in MongoDB
+- Return success JSON
+- Not throw 500 error

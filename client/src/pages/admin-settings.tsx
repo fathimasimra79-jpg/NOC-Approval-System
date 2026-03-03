@@ -81,8 +81,8 @@ export default function AdminSettingsPage() {
     const logoFile = (document.getElementById("logo") as HTMLInputElement).files?.[0];
     const signatureFile = (document.getElementById("signature") as HTMLInputElement).files?.[0];
 
-    if (logoFile) formData.append("logo", logoFile);
-    if (signatureFile) formData.append("signature", signatureFile);
+    if (logoFile) formData.append("collegeLogo", logoFile);
+    if (signatureFile) formData.append("signatureImage", signatureFile);
 
     mutation.mutate(formData);
   };
