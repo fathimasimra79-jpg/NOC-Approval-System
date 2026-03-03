@@ -42,9 +42,9 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (settings) {
       form.reset({
-        collegeName: settings.collegeName,
-        authorizedName: settings.authorizedName,
-        designation: settings.designation,
+        collegeName: settings.collegeName || "",
+        authorizedName: settings.authorizedName || "",
+        designation: settings.designation || "",
       });
       if (settings.logoPath) setLogoPreview(settings.logoPath);
       if (settings.signaturePath) setSignaturePreview(settings.signaturePath);
@@ -53,14 +53,31 @@ export default function AdminSettingsPage() {
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      const token = localStorage.getItem("noc_token");
+      if (!token) throw new Error("Authentication token missing. Please log in again.");
+      
       const res = await fetch(api.admin.settings.update.path, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
-      if (!res.ok) throw new Error("Failed to save settings");
+
+      if (!res.ok) {
+        let errorMessage = `Error ${res.status}: ${res.statusText}`;
+        try {
+          const resClone = res.clone();
+          const errorData = await resClone.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          try {
+            const errorText = await res.text();
+            if (errorText) errorMessage = `Error ${res.status}: ${errorText}`;
+          } catch (e2) {}
+        }
+        throw new Error(errorMessage);
+      }
       return res.json();
     },
     onSuccess: () => {

@@ -73,7 +73,7 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       // Top Left -> College Logo
       if (settings?.logoPath) {
         try {
-          const logoFull = path.join(process.cwd(), settings.logoPath);
+          const logoFull = path.join(process.cwd(), settings.logoPath.startsWith('/') ? settings.logoPath.substring(1) : settings.logoPath);
           if (fs.existsSync(logoFull)) {
             doc.image(logoFull, 50, 45, { width: 60 });
           }
@@ -117,7 +117,7 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       // Bottom Right -> Signature Image
       if (settings?.signaturePath) {
         try {
-          const sigFull = path.join(process.cwd(), settings.signaturePath);
+          const sigFull = path.join(process.cwd(), settings.signaturePath.startsWith('/') ? settings.signaturePath.substring(1) : settings.signaturePath);
           if (fs.existsSync(sigFull)) {
             // Place it towards the bottom right
             doc.image(sigFull, 400, doc.y - 40, { width: 100 });
@@ -177,6 +177,7 @@ export async function registerRoutes(
   // Serve static PDF files
   app.use('/pdfs', express.static(path.join(process.cwd(), 'public', 'pdfs')));
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/public/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // --- Auth Routes ---
   app.post(api.auth.register.path, async (req, res) => {
@@ -336,17 +337,22 @@ export async function registerRoutes(
   });
 
   app.get(api.admin.settings.get.path, authenticateToken, authenticateAdmin, async (req, res) => {
-    const settings = await storage.getAdminSettings();
-    if (!settings) {
-      return res.status(200).json({
-        collegeName: "",
-        authorizedName: "",
-        designation: "",
-        logoPath: null,
-        signaturePath: null
-      });
+    try {
+      const settings = await storage.getAdminSettings();
+      if (!settings) {
+        return res.status(200).json({
+          collegeName: "",
+          authorizedName: "",
+          designation: "",
+          logoPath: null,
+          signaturePath: null
+        });
+      }
+      res.json(settings);
+    } catch (err) {
+      console.error("Error fetching settings:", err);
+      res.status(500).json({ message: "Internal server error" });
     }
-    res.json(settings);
   });
 
   app.post(api.admin.settings.update.path, authenticateToken, authenticateAdmin, upload.fields([
@@ -354,14 +360,11 @@ export async function registerRoutes(
     { name: 'signatureImage', maxCount: 1 }
   ]), async (req, res) => {
     try {
-      console.log("Files received:", req.files);
-      console.log("Body received:", req.body);
-      
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
       const { collegeName, authorizedName, designation } = req.body;
       
-      const logoPath = files['collegeLogo']?.[0]?.path ? `/${files['collegeLogo'][0].path}` : undefined;
-      const signaturePath = files['signatureImage']?.[0]?.path ? `/${files['signatureImage'][0].path}` : undefined;
+      const logoPath = files?.['collegeLogo']?.[0]?.filename ? `/uploads/${files['collegeLogo'][0].filename}` : undefined;
+      const signaturePath = files?.['signatureImage']?.[0]?.filename ? `/uploads/${files['signatureImage'][0].filename}` : undefined;
 
       const existing = await storage.getAdminSettings();
       
@@ -376,8 +379,8 @@ export async function registerRoutes(
       const updated = await storage.upsertAdminSettings(settings);
       res.json(updated);
     } catch (err) {
-      console.error("Error updating settings:", err);
-      res.status(500).json({ message: "Internal server error" });
+      console.error("CRITICAL: Error updating settings:", err);
+      res.status(500).json({ message: "Internal server error occurred while saving settings" });
     }
   });
 
