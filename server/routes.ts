@@ -372,8 +372,8 @@ export async function registerRoutes(
         collegeName: collegeName || existing?.collegeName || "",
         authorizedName: authorizedName || existing?.authorizedName || "",
         designation: designation || existing?.designation || "",
-        logoPath: logoPath || existing?.logoPath || null,
-        signaturePath: signaturePath || existing?.signaturePath || null,
+        logoPath: logoPath !== undefined ? logoPath : (existing?.logoPath || null),
+        signaturePath: signaturePath !== undefined ? signaturePath : (existing?.signaturePath || null),
       };
       
       const updated = await storage.upsertAdminSettings(settings);

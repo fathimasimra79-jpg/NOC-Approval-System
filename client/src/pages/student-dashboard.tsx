@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@shared/routes";
+import { jsPDF } from "jspdf";
 
 const applySchema = api.noc.apply.input;
 
@@ -37,6 +38,116 @@ export default function StudentDashboard() {
       setLocation("/student/login");
     }
   }, [isAuthenticated, authLoading, user, setLocation]);
+
+  const generatePDF = async (studentData: any, adminSettings: any) => {
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const loadImage = async (path: string) => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`Failed to load image: ${path}`);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    // ===== LOGO (Top Left) =====
+    if (adminSettings.logoPath) {
+      try {
+        const logoBase64 = await loadImage(adminSettings.logoPath) as string;
+        doc.addImage(logoBase64, "PNG", 20, 15, 45, 20);
+      } catch (e) {
+        console.error("Logo load failed", e);
+      }
+    }
+
+    // ===== TITLE =====
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(18);
+    doc.text("No Objection Certificate", pageWidth / 2, 45, {
+      align: "center",
+    });
+
+    // ===== HORIZONTAL LINE =====
+    doc.setLineWidth(0.5);
+    doc.line(20, 52, 190, 52);
+
+    let y = 65;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+
+    // ===== STUDENT DETAILS =====
+    doc.text(`Student Name: ${studentData.name}`, 20, y);
+    y += 9;
+
+    doc.text(`Roll Number: ${studentData.rollNumber}`, 20, y);
+    y += 9;
+
+    doc.text(`Department: ${studentData.department}`, 20, y);
+    y += 9;
+
+    doc.text(`Purpose: ${studentData.reason}`, 20, y);
+    y += 18;
+
+    // ===== EXACT PARAGRAPH STYLE =====
+    const paragraph = `
+This is to certify that ${studentData.name}, bearing roll number ${studentData.rollNumber}, from the ${studentData.department} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to internship. This certificate is issued on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} and is valid for official purpose.
+    `;
+
+    const splitText = doc.splitTextToSize(paragraph.trim(), 170);
+    doc.text(splitText, 20, y);
+
+    y += splitText.length * 7 + 25;
+
+    // ===== DATE (Left Bottom) =====
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `Date of Issue: ${new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })}`,
+      20,
+      y
+    );
+
+    // ===== SIGNATURE (Right Bottom) =====
+    const signY = y + 5;
+
+    if (adminSettings.signaturePath) {
+      try {
+        const signBase64 = await loadImage(adminSettings.signaturePath) as string;
+        doc.addImage(signBase64, "PNG", 135, signY - 15, 40, 20);
+      } catch (e) {
+        console.error("Signature load failed", e);
+      }
+    }
+
+    doc.setLineWidth(0.5);
+    doc.line(130, signY + 10, 185, signY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorized Signatory", 145, signY + 18);
+
+    doc.save(`NOC_${studentData.rollNumber}.pdf`);
+  };
+
+  const handleDownloadNOC = async (req: any) => {
+    try {
+      const response = await fetch("/api/admin/settings", {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('noc_token')}`
+        }
+      });
+      const settings = await response.json();
+      await generatePDF(user ? { ...req, ...user } : req, settings);
+    } catch (err) {
+      console.error("Download failed", err);
+    }
+  };
 
   if (authLoading || reqsLoading) {
     return (
@@ -161,12 +272,13 @@ export default function StudentDashboard() {
                       )}
                     </CardContent>
                     
-                    {req.status === 'Approved' && req.pdfPath && (
+                    {req.status === 'Approved' && (
                       <CardFooter className="pt-0 pb-5 px-5">
-                        <Button asChild className="w-full rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 shadow-none">
-                          <a href={req.pdfPath} target="_blank" rel="noreferrer">
-                            <Download className="h-4 w-4 mr-2" /> Download Certificate
-                          </a>
+                        <Button 
+                          className="w-full rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 shadow-none"
+                          onClick={() => handleDownloadNOC(req)}
+                        >
+                          <Download className="h-4 w-4 mr-2" /> Download Certificate
                         </Button>
                       </CardFooter>
                     )}

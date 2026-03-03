@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Search, Check, X, Building, Calendar, User as UserIcon, Settings } from "lucide-react";
+import { Loader2, Search, Check, X, Building, Calendar, User as UserIcon, Settings, FileText } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 export default function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuthContext();
@@ -49,6 +50,116 @@ export default function AdminDashboard() {
           setRejectionReason("");
         }
       });
+    }
+  };
+
+  const generatePDF = async (studentData: any, adminSettings: any) => {
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const loadImage = async (path: string) => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`Failed to load image: ${path}`);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    // ===== LOGO (Top Left) =====
+    if (adminSettings.logoPath) {
+      try {
+        const logoBase64 = await loadImage(adminSettings.logoPath) as string;
+        doc.addImage(logoBase64, "PNG", 20, 15, 45, 20);
+      } catch (e) {
+        console.error("Logo load failed", e);
+      }
+    }
+
+    // ===== TITLE =====
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(18);
+    doc.text("No Objection Certificate", pageWidth / 2, 45, {
+      align: "center",
+    });
+
+    // ===== HORIZONTAL LINE =====
+    doc.setLineWidth(0.5);
+    doc.line(20, 52, 190, 52);
+
+    let y = 65;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+
+    // ===== STUDENT DETAILS =====
+    doc.text(`Student Name: ${studentData.name}`, 20, y);
+    y += 9;
+
+    doc.text(`Roll Number: ${studentData.rollNumber}`, 20, y);
+    y += 9;
+
+    doc.text(`Department: ${studentData.department}`, 20, y);
+    y += 9;
+
+    doc.text(`Purpose: ${studentData.reason}`, 20, y);
+    y += 18;
+
+    // ===== EXACT PARAGRAPH STYLE =====
+    const paragraph = `
+This is to certify that ${studentData.name}, bearing roll number ${studentData.rollNumber}, from the ${studentData.department} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to internship. This certificate is issued on ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} and is valid for official purpose.
+    `;
+
+    const splitText = doc.splitTextToSize(paragraph.trim(), 170);
+    doc.text(splitText, 20, y);
+
+    y += splitText.length * 7 + 25;
+
+    // ===== DATE (Left Bottom) =====
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `Date of Issue: ${new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })}`,
+      20,
+      y
+    );
+
+    // ===== SIGNATURE (Right Bottom) =====
+    const signY = y + 5;
+
+    if (adminSettings.signaturePath) {
+      try {
+        const signBase64 = await loadImage(adminSettings.signaturePath) as string;
+        doc.addImage(signBase64, "PNG", 135, signY - 15, 40, 20);
+      } catch (e) {
+        console.error("Signature load failed", e);
+      }
+    }
+
+    doc.setLineWidth(0.5);
+    doc.line(130, signY + 10, 185, signY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorized Signatory", 145, signY + 18);
+
+    doc.save(`NOC_${studentData.rollNumber}.pdf`);
+  };
+
+  const handleDownloadNOC = async (req: any) => {
+    try {
+      const response = await fetch("/api/admin/settings", {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('noc_token')}`
+        }
+      });
+      const settings = await response.json();
+      await generatePDF(req.student ? { ...req, ...req.student } : req, settings);
+    } catch (err) {
+      console.error("Download failed", err);
     }
   };
 
@@ -155,26 +266,39 @@ export default function AdminDashboard() {
                     <div className="w-full lg:w-[200px] shrink-0 flex flex-col lg:items-end gap-3 border-t lg:border-t-0 pt-4 lg:pt-0 border-border/40">
                       <StatusBadge status={req.status} />
                       
-                      {req.status === 'Pending' && (
-                        <div className="flex gap-2 mt-2 w-full justify-end">
+                      <div className="flex gap-2 mt-2 w-full justify-end">
+                        {req.status === 'Approved' && (
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="w-full lg:w-auto rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                            onClick={() => setRejectDialogId(req.id)}
+                            className="w-full lg:w-auto rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                            onClick={() => handleDownloadNOC(req)}
                           >
-                            <X className="h-4 w-4 mr-1" /> Reject
+                            <FileText className="h-4 w-4 mr-1" /> Download NOC
                           </Button>
-                          <Button 
-                            size="sm" 
-                            className="w-full lg:w-auto rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                            onClick={() => handleApprove(req.id)}
-                            disabled={approveMutation.isPending}
-                          >
-                            <Check className="h-4 w-4 mr-1" /> Approve
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        
+                        {req.status === 'Pending' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="w-full lg:w-auto rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                              onClick={() => setRejectDialogId(req.id)}
+                            >
+                              <X className="h-4 w-4 mr-1" /> Reject
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="w-full lg:w-auto rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                              onClick={() => handleApprove(req.id)}
+                              disabled={approveMutation.isPending}
+                            >
+                              <Check className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))}
