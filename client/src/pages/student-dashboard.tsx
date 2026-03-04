@@ -16,7 +16,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@shared/routes";
-import { jsPDF } from "jspdf";
 
 const applySchema = api.noc.apply.input;
 
@@ -39,122 +38,9 @@ export default function StudentDashboard() {
     }
   }, [isAuthenticated, authLoading, user, setLocation]);
 
-  const generatePDF = async (studentData: any, adminSettings: any) => {
-    const doc = new jsPDF("p", "mm", "a4");
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
-
-    const loadImage = async (path: string) => {
-      const response = await fetch(path);
-      if (!response.ok) throw new Error(`Failed to load image: ${path}`);
-      const blob = await response.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-    };
-
-    // ===== HEADER =====
-    let headerY = 15;
-    if (adminSettings.logoPath) {
-      try {
-        const logoBase64 = await loadImage(adminSettings.logoPath) as string;
-        doc.addImage(logoBase64, "PNG", margin, headerY, 30, 30);
-        
-        doc.setFont("times", "bold");
-        doc.setFontSize(16);
-        doc.text("SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN", margin + 35, headerY + 12);
-        
-        doc.setFont("times", "italic");
-        doc.setFontSize(10);
-        doc.text("Approved by AICTE, New Delhi & Affiliated to JNTUH", margin + 35, headerY + 18);
-      } catch (e) {
-        console.error("Logo load failed", e);
-      }
-    }
-
-    doc.setFont("times", "bold");
-    doc.setFontSize(22);
-    doc.text("No Objection Certificate", pageWidth / 2, 55, { align: "center" });
-
-    doc.setLineWidth(0.5);
-    doc.line(margin, 62, pageWidth - margin, 62);
-
-    // ===== STUDENT DETAILS SECTION =====
-    let y = 80;
-    doc.setFont("times", "bold");
-    doc.setFontSize(12);
-    
-    const details = [
-      { label: "Student Name:", value: studentData.name },
-      { label: "Roll Number:", value: studentData.rollNumber },
-      { label: "Department:", value: studentData.department },
-      { label: "Purpose:", value: studentData.reason }
-    ];
-
-    details.forEach(detail => {
-      doc.setFont("times", "bold");
-      doc.text(detail.label, margin, y);
-      doc.setFont("times", "normal");
-      doc.text(detail.value, margin + 40, y);
-      y += 10;
-    });
-
-    // ===== BODY PARAGRAPH =====
-    y += 15;
-    doc.setFont("times", "normal");
-    doc.setFontSize(13);
-    
-    const issueDate = new Date().toLocaleDateString("en-US", { 
-      month: "long", 
-      day: "numeric", 
-      year: "numeric" 
-    });
-
-    const paragraph = `This is to certify that ${studentData.name}, bearing roll number ${studentData.rollNumber}, from the ${studentData.department} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to ${studentData.reason}. This certificate is issued on ${issueDate} and is valid for official purpose.`;
-
-    const splitText = doc.splitTextToSize(paragraph.trim(), pageWidth - (margin * 2));
-    doc.text(splitText, margin, y, { lineHeightFactor: 1.5 });
-
-    y += (splitText.length * 7) + 40;
-
-    // ===== BOTTOM SECTION =====
-    doc.setFont("times", "bold");
-    doc.text(`Date of Issue: ${issueDate}`, margin, y);
-
-    const rightSideX = pageWidth - margin - 50;
-    if (adminSettings.signaturePath) {
-      try {
-        const signBase64 = await loadImage(adminSettings.signaturePath) as string;
-        doc.addImage(signBase64, "PNG", rightSideX, y - 25, 40, 20);
-      } catch (e) {
-        console.error("Signature load failed", e);
-      }
-    }
-
-    doc.setLineWidth(0.3);
-    doc.line(rightSideX - 10, y + 2, pageWidth - margin, y + 2);
-    
-    doc.setFont("times", "bold");
-    doc.text(adminSettings.authorizedName || "Principal", rightSideX, y + 10);
-    doc.setFont("times", "normal");
-    doc.text("Authorized Signatory", rightSideX, y + 16);
-
-    doc.save(`NOC_${studentData.rollNumber}.pdf`);
-  };
-
-  const handleDownloadNOC = async (req: any) => {
-    try {
-      const response = await fetch("/api/admin/settings", {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('noc_token')}`
-        }
-      });
-      const settings = await response.json();
-      await generatePDF(user ? { ...req, ...user } : req, settings);
-    } catch (err) {
-      console.error("Download failed", err);
+  const handleDownloadNOC = (req: any) => {
+    if (req.pdfPath) {
+      window.open(req.pdfPath, '_blank');
     }
   };
 

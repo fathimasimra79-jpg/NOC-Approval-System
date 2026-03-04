@@ -57,9 +57,13 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
   
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 50 });
-      const dirPath = path.join(process.cwd(), "public", "pdfs");
+      // A4 size is default. Margins: 40px is approx 14mm
+      const doc = new PDFDocument({ 
+        size: 'A4',
+        margin: 40 
+      });
       
+      const dirPath = path.join(process.cwd(), "uploads");
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
       }
@@ -70,72 +74,94 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       
       doc.pipe(writeStream);
       
-      // Top Left -> College Logo
+      // 1. HEADER
+      let currentY = 40;
+      
+      // Logo and College Name
       if (settings?.logoPath) {
         try {
           const logoFull = path.join(process.cwd(), settings.logoPath.startsWith('/') ? settings.logoPath.substring(1) : settings.logoPath);
           if (fs.existsSync(logoFull)) {
-            doc.image(logoFull, 50, 45, { width: 60 });
+            doc.image(logoFull, 40, 40, { width: 50 });
+            
+            doc.font('Times-Bold').fontSize(16)
+               .text("SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN", 100, 50);
+            doc.font('Times-Italic').fontSize(10)
+               .text("Approved by AICTE, New Delhi & Affiliated to JNTUH", 100, 65);
+          } else {
+            doc.font('Times-Bold').fontSize(18)
+               .text(settings.collegeName || "SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN", { align: 'center' });
           }
         } catch (e) {
           console.error("Failed to add logo to PDF", e);
         }
+      } else {
+        doc.font('Times-Bold').fontSize(18)
+           .text(settings?.collegeName || "SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN", { align: 'center' });
       }
-
-      // Center Top -> College Name
-      const collegeName = settings?.collegeName || "UNIVERSITY NAME";
-      doc.fontSize(18).font('Helvetica-Bold').text(collegeName.toUpperCase(), { align: "center" });
-      doc.moveDown(0.5);
       
-      // Title "No Objection Certificate" centered below it
-      doc.fontSize(16).font('Helvetica').text("NO OBJECTION CERTIFICATE", { align: "center" });
-      doc.moveDown(0.5);
-      
-      // Horizontal line below title
-      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
       doc.moveDown(2);
       
-      // Student Details
-      doc.fontSize(12).font('Helvetica-Bold').text("STUDENT DETAILS:");
-      doc.font('Helvetica').text(`Name: ${student.name}`);
-      doc.text(`Roll Number: ${student.rollNumber}`);
-      doc.text(`Department: ${student.department}`);
-      doc.text(`Year: ${student.year}`);
-      doc.moveDown();
+      // Centered Title
+      doc.font('Times-Bold').fontSize(22).text("No Objection Certificate", { align: 'center' });
+      doc.moveDown(0.5);
       
-      // Paragraph
-      doc.fontSize(12).text(`This is to certify that the above-mentioned student is a bonafide student of our university. We have no objection to them undertaking an internship at ${noc.companyName} for a duration of ${noc.duration}.`, { align: 'justify' });
-      doc.moveDown();
+      // Horizontal Divider
+      doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+      doc.moveDown(2);
       
-      doc.text(`Reason for NOC: ${noc.reason}`);
+      // 2. STUDENT DETAILS SECTION
+      doc.font('Times-Bold').fontSize(12);
+      doc.text(`Student Name: `, { continued: true }).font('Times-Roman').text(student.name);
+      doc.moveDown(0.5);
+      doc.font('Times-Bold').text(`Roll Number: `, { continued: true }).font('Times-Roman').text(student.rollNumber);
+      doc.moveDown(0.5);
+      doc.font('Times-Bold').text(`Department: `, { continued: true }).font('Times-Roman').text(student.department);
+      doc.moveDown(0.5);
+      doc.font('Times-Bold').text(`Purpose: `, { continued: true }).font('Times-Roman').text(noc.reason);
+      doc.moveDown(2);
+      
+      // 3. BODY PARAGRAPH
+      const issueDate = new Date().toLocaleDateString("en-US", { 
+        month: "long", 
+        day: "numeric", 
+        year: "numeric" 
+      });
+      
+      const bodyText = `This is to certify that ${student.name}, bearing roll number ${student.rollNumber}, from the ${student.department} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to ${noc.reason}. This certificate is issued on ${issueDate} and is valid for official purpose.`;
+      
+      doc.font('Times-Roman').fontSize(12).text(bodyText, {
+        align: 'justify',
+        lineGap: 5
+      });
       doc.moveDown(4);
       
-      // Bottom Left -> Date of Issue
-      const issueDate = new Date().toLocaleDateString();
-      doc.font('Helvetica-Bold').text(`Date of Issue: ${issueDate}`, 50, doc.y, { align: "left" });
+      // 4. BOTTOM SECTION
+      const bottomY = doc.y;
       
-      // Bottom Right -> Signature Image
+      // Left side: Date
+      doc.font('Times-Bold').text(`Date of Issue: ${issueDate}`, 40, bottomY);
+      
+      // Right side: Signature
+      const rightX = 350;
       if (settings?.signaturePath) {
         try {
           const sigFull = path.join(process.cwd(), settings.signaturePath.startsWith('/') ? settings.signaturePath.substring(1) : settings.signaturePath);
           if (fs.existsSync(sigFull)) {
-            // Place it towards the bottom right
-            doc.image(sigFull, 400, doc.y - 40, { width: 100 });
+            doc.image(sigFull, rightX + 25, bottomY - 50, { width: 100 });
           }
         } catch (e) {
           console.error("Failed to add signature to PDF", e);
         }
       }
-
-      doc.moveDown(2);
-      doc.fontSize(12).font('Helvetica').text(settings?.authorizedName || "Authorized Signatory", 400, doc.y, { align: "center" });
-      doc.text(settings?.designation || "Head of Department", 400, doc.y, { align: "center" });
-      doc.text("Authorized Signatory", 400, doc.y, { align: "center" });
+      
+      doc.font('Times-Bold').text(settings?.authorizedName || "Principal", rightX, bottomY, { align: 'center', width: 150 });
+      doc.font('Times-Roman').text("Authorized Signatory", rightX, doc.y, { align: 'center', width: 150 });
       
       doc.end();
       
       writeStream.on('finish', () => {
-        resolve(`/pdfs/${fileName}`);
+        resolve(`/uploads/${fileName}`);
       });
       writeStream.on('error', reject);
     } catch (err) {
