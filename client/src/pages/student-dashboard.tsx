@@ -40,7 +40,12 @@ export default function StudentDashboard() {
 
   const handleDownloadNOC = (req: any) => {
     if (req.pdfPath) {
-      window.open(req.pdfPath, '_blank');
+      const link = document.createElement('a');
+      link.href = req.pdfPath;
+      link.setAttribute('download', `noc_certificate_${user?.rollNumber || 'unknown'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 

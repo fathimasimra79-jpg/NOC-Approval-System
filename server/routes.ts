@@ -67,41 +67,45 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
       
-      const fileName = `NOC_${noc.id}_${student.rollNumber}.pdf`;
+      const fileName = `noc_certificate_${student.rollNumber}.pdf`;
       const filePath = path.join(uploadsDir, fileName);
       const writeStream = fs.createWriteStream(filePath);
       
       doc.pipe(writeStream);
       
-      // 1. LOGO
+      // 1. TOP LEFT - LOGO & COLLEGE NAME
+      let currentY = 45;
       if (settings?.logoPath) {
         try {
           const logoFull = path.join(process.cwd(), settings.logoPath.startsWith('/') ? settings.logoPath.substring(1) : settings.logoPath);
           if (fs.existsSync(logoFull)) {
-            doc.image(logoFull, 40, 45, { width: 45 });
+            doc.image(logoFull, 40, currentY, { width: 45 });
+            doc.font('Times-Bold').fontSize(14)
+               .text(settings.collegeName || "COLLEGE NAME", 95, currentY + 15);
+          } else {
+            doc.font('Times-Bold').fontSize(16)
+               .text(settings.collegeName || "COLLEGE NAME", 40, currentY);
           }
         } catch (e) {
           console.error("Failed to add logo to PDF", e);
+          doc.font('Times-Bold').fontSize(16)
+             .text(settings?.collegeName || "COLLEGE NAME", 40, currentY);
         }
+      } else {
+        doc.font('Times-Bold').fontSize(16)
+           .text(settings?.collegeName || "COLLEGE NAME", 40, currentY);
       }
       
-      // 2. HEADER
-      doc.font('Times-Bold').fontSize(16)
-         .text("SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN", 110, 50);
-      
-      doc.font('Times-Italic').fontSize(10)
-         .text("Approved by AICTE, New Delhi & Affiliated to JNTUH", 110, 70);
-      
-      // Centered Title
-      doc.font('Times-Bold').fontSize(22)
+      // 2. CENTER TITLE
+      doc.font('Times-Bold').fontSize(24)
          .text("No Objection Certificate", 0, 130, { align: 'center' });
       
-      // Horizontal Line
-      doc.moveTo(40, 160).lineTo(555, 160).stroke();
+      // Horizontal Separator
+      doc.moveTo(40, 165).lineTo(555, 165).stroke();
       
-      // 3. STUDENT DETAILS
-      let currentY = 190;
-      const lineSpacing = 25;
+      // 3. STUDENT DETAILS SECTION
+      let detailsY = 195;
+      const lineSpacing = 22;
       doc.font('Times-Bold').fontSize(12);
       
       const details = [
@@ -112,12 +116,12 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       ];
       
       details.forEach(detail => {
-        doc.font('Times-Bold').text(detail.label, 40, currentY);
-        doc.font('Times-Roman').text(detail.value, 150, currentY);
-        currentY += lineSpacing;
+        doc.font('Times-Bold').text(detail.label, 40, detailsY);
+        doc.font('Times-Roman').text(detail.value, 150, detailsY);
+        detailsY += lineSpacing;
       });
       
-      // 4. BODY PARAGRAPH
+      // 4. CERTIFICATE PARAGRAPH
       const issueDate = new Date().toLocaleDateString("en-US", { 
         month: "long", 
         day: "numeric", 
@@ -127,23 +131,25 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       const bodyText = `This is to certify that ${student.name}, bearing roll number ${student.rollNumber}, from the ${student.department} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to ${noc.reason}. This certificate is issued on ${issueDate} and is valid for official purpose.`;
       
       doc.font('Times-Roman').fontSize(12)
-         .text(bodyText, 40, 290, {
+         .text(bodyText, 40, 310, {
            width: doc.page.width - 80,
            align: 'justify',
            lineGap: 6
          });
       
       // 5. BOTTOM SECTION
-      // Left side: Date
-      doc.font('Times-Bold').text(`Date of Issue: ${issueDate}`, 40, 520);
+      // Bottom Left: Date
+      doc.font('Times-Bold').text(`Date of Issue: ${issueDate}`, 40, 540);
       
-      // Right side: Signature
-      const rightX = doc.page.width - 180;
+      // Bottom Right: Signature & Signatory Info
+      const rightX = doc.page.width - 200;
+      let sigY = 480;
+      
       if (settings?.signaturePath) {
         try {
           const sigFull = path.join(process.cwd(), settings.signaturePath.startsWith('/') ? settings.signaturePath.substring(1) : settings.signaturePath);
           if (fs.existsSync(sigFull)) {
-            doc.image(sigFull, rightX, 480, { width: 100 });
+            doc.image(sigFull, rightX + 25, sigY, { width: 100 });
           }
         } catch (e) {
           console.error("Failed to add signature to PDF", e);
@@ -151,8 +157,10 @@ async function generateNOCPdf(noc: any, student: any): Promise<string> {
       }
       
       const signatoryName = settings?.authorizedName || "Principal";
-      doc.font('Times-Bold').text(signatoryName, rightX, 540, { align: 'center', width: 140 });
-      doc.font('Times-Roman').text("Authorized Signatory", rightX, 555, { align: 'center', width: 140 });
+      const designation = settings?.designation || "Authorized Signatory";
+      
+      doc.font('Times-Bold').text(signatoryName, rightX, 540, { align: 'center', width: 160 });
+      doc.font('Times-Roman').fontSize(10).text(designation, rightX, 555, { align: 'center', width: 160 });
       
       doc.end();
       
