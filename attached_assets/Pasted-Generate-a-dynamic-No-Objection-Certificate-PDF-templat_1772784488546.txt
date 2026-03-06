@@ -1,0 +1,50 @@
+Generate a dynamic No Objection Certificate PDF template that exactly preserves the existing structure and layout from my current NOC sample, with no major changes to positioning or sections. Make all text fields dynamic using placeholders. The college logo is already handled/uploaded via the admin dashboard — insert it as {{college_logo}} at the top center.
+
+Exact required structure and anti-overlap rules:
+
+- A4 portrait, white background, 1.8–2 cm margins on all sides for good breathing room.
+- Header (top section):
+  - Center: {{college_logo}} (use the admin-uploaded logo image, recommended height 100–140px, do not stretch or crop).
+  - Immediately below logo (with forced 15–25px vertical padding/space to prevent any overlap with name):
+    Full college name in bold uppercase, centered, font size 18–22pt, dark color (black/blue), allow natural 1–2 line wrap if long but keep clean:
+    SUMATHI REDDY INSTITUTE OF TECHNOLOGY FOR WOMEN
+  - Optional small tagline below name (if space allows, 10–12pt italic/regular):
+    LEARNING WITH EXCELLENCE
+  - Critical: Ensure logo and college name NEVER overlap — add extra vertical padding if name is long; force separation.
+
+- Thin horizontal line (1pt solid black) full width below header, with 20–30px space above and below.
+
+- Centered main title in very large bold font (26–32pt, black):
+  No Objection Certificate
+
+- Another thin horizontal line below title, with 25–35px vertical spacing.
+
+- Student details block: Left-aligned or slight indent, font 14–16pt, labels bold, 1.5–1.8 line spacing, neat vertical gaps:
+  Student Name: {{student_name}}
+  Roll Number: {{roll_number}}
+  Department: {{department}}
+  Purpose: {{purpose}}
+
+- Thin horizontal line or 30px vertical space after details block.
+
+- Main body paragraph: Justified alignment, 12–14pt font, 1.5 line spacing:
+  This is to certify that {{student_name}}, bearing roll number {{roll_number}}, from the {{department}} Department, is a student in good academic standing and has consistently demonstrated excellent performance. The institution has no objection to {{student_name}} undertaking internship. This certificate is issued on {{issue_date}} and is valid for official purpose.
+
+- Bottom section (after 40–60px vertical space from paragraph end):
+  - Left-aligned: Date of Issue: {{issue_date}} (12pt font)
+  - Right-aligned (flush right): Signature area with underline placeholder (\~80–120px height space):
+    ___________________________
+    Dr. S. Rajani Reddy
+    Authorized Signatory
+    (12–14pt font)
+
+Strict layout rules to match sample and fix overlapping:
+- Preserve the original visual flow: logo/name → line → big title → line → student info → line/space → paragraph → date left + signature right.
+- Increase vertical spacing generously between all sections (minimum 20px, up to 50px where needed) to avoid crowding.
+- College name area: Force at least 20–30px padding below logo; if name wraps to 2 lines, increase line-height slightly and add more bottom padding.
+- No text should overlap or touch elements above/below — prioritize white space.
+- Use professional fonts: Headings bold sans-serif (Arial/Helvetica), body serif or sans-serif (Times New Roman/Arial/Calibri).
+- All dynamic fields use {{placeholder}} syntax (or adapt to your builder's format like [student_name] if needed).
+- Output as editable/dynamic PDF template for NOC generator, A4 size.
+
+This must look identical in structure to the attached/reference NOC but with dynamic data and fixed spacing/no overlaps.
